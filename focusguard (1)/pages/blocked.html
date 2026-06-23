@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FocusGuard — Blocked</title>
+  <style>
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0f11;
+      --surface: #18181c;
+      --border: #2a2a32;
+      --text: #e8e8f0;
+      --muted: #6b6b80;
+      --accent: #7c6df0;
+      --accent-glow: rgba(124, 109, 240, 0.2);
+      --danger: #f04f4f;
+      --success: #4fc47a;
+      --radius: 14px;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* Ambient background orb */
+    body::before {
+      content: '';
+      position: fixed;
+      top: -20%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(124,109,240,0.12) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .card {
+      position: relative;
+      z-index: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 48px 56px;
+      max-width: 480px;
+      width: 90%;
+      text-align: center;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.03), 0 24px 64px rgba(0,0,0,0.5);
+    }
+
+    .shield-icon {
+      width: 52px;
+      height: 52px;
+      margin: 0 auto 24px;
+      background: var(--accent-glow);
+      border: 1px solid rgba(124,109,240,0.4);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+
+    .site-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: var(--accent);
+      background: rgba(124,109,240,0.1);
+      border: 1px solid rgba(124,109,240,0.25);
+      border-radius: 6px;
+      padding: 4px 10px;
+      display: inline-block;
+      margin-bottom: 16px;
+      letter-spacing: 0.02em;
+    }
+
+    h1 {
+      font-size: 22px;
+      font-weight: 600;
+      line-height: 1.3;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.5;
+      margin-bottom: 40px;
+    }
+
+    /* Countdown ring */
+    .countdown-wrap {
+      position: relative;
+      width: 120px;
+      height: 120px;
+      margin: 0 auto 32px;
+    }
+
+    .countdown-svg {
+      width: 120px;
+      height: 120px;
+      transform: rotate(-90deg);
+    }
+
+    .countdown-track {
+      fill: none;
+      stroke: var(--border);
+      stroke-width: 4;
+    }
+
+    .countdown-ring {
+      fill: none;
+      stroke: var(--accent);
+      stroke-width: 4;
+      stroke-linecap: round;
+      stroke-dasharray: 320;
+      stroke-dashoffset: 0;
+      transition: stroke-dashoffset 1s linear, stroke 0.3s;
+      filter: drop-shadow(0 0 6px rgba(124,109,240,0.6));
+    }
+
+    .countdown-ring.almost {
+      stroke: var(--danger);
+      filter: drop-shadow(0 0 6px rgba(240,79,79,0.6));
+    }
+
+    .countdown-ring.done {
+      stroke: var(--success);
+      filter: drop-shadow(0 0 6px rgba(79,196,122,0.6));
+    }
+
+    .countdown-number {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 32px;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    .countdown-number.done {
+      font-size: 26px;
+      color: var(--success);
+    }
+
+    .message {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 24px;
+      min-height: 20px;
+      transition: color 0.3s;
+    }
+
+    .message.active {
+      color: var(--text);
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s;
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+      box-shadow: 0 0 20px rgba(124,109,240,0.3);
+    }
+
+    .btn-primary:hover {
+      background: #8f80f5;
+      box-shadow: 0 0 28px rgba(124,109,240,0.45);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary:disabled {
+      background: #2a2a38;
+      color: var(--muted);
+      box-shadow: none;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    .btn-ghost:hover {
+      color: var(--text);
+      border-color: #3a3a46;
+    }
+
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .go-back {
+      margin-top: 4px;
+    }
+
+    /* Phase states */
+    .phase-waiting { display: block; }
+    .phase-counting { display: none; }
+    .phase-unlocked { display: none; }
+
+    body.counting .phase-waiting { display: none; }
+    body.counting .phase-counting { display: block; }
+    body.unlocked .phase-waiting { display: none; }
+    body.unlocked .phase-unlocked { display: block; }
+
+    .unlock-msg {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 14px;
+      color: var(--success);
+      margin-bottom: 20px;
+    }
+
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 28px 0;
+    }
+
+    .unlock-note {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    #cancelBtn {
+      font-size: 12px;
+      padding: 8px 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="shield-icon">🛡️</div>
+    <div class="site-label" id="siteLabel">loading...</div>
+    <h1 id="title">This site is blocked</h1>
+    <p class="subtitle" id="subtitle">FocusGuard is keeping you on track.<br>If you really need access, wait through the countdown.</p>
+
+    <!-- Countdown ring (visible during all phases) -->
+    <div class="countdown-wrap">
+      <svg class="countdown-svg" viewBox="0 0 120 120">
+        <circle class="countdown-track" cx="60" cy="60" r="51"/>
+        <circle class="countdown-ring" id="ring" cx="60" cy="60" r="51"/>
+      </svg>
+      <div class="countdown-number" id="countNum">—</div>
+    </div>
+
+    <p class="message" id="msg">Ready when you are.</p>
+
+    <!-- Phase: waiting to start -->
+    <div class="phase-waiting actions">
+      <button class="btn btn-primary" id="startBtn">Start countdown</button>
+      <button class="btn btn-ghost go-back" id="backBtn">← Go back</button>
+    </div>
+
+    <!-- Phase: counting -->
+    <div class="phase-counting actions">
+      <button class="btn btn-ghost" id="cancelBtn">Cancel</button>
+    </div>
+
+    <!-- Phase: unlocked -->
+    <div class="phase-unlocked">
+      <div class="unlock-msg" id="unlockMsg">✓ Access granted</div>
+      <button class="btn btn-primary" id="proceedBtn" style="width:100%">Continue to site</button>
+      <div class="divider"></div>
+      <p class="unlock-note" id="unlockNote">You have a few minutes before this site is blocked again.</p>
+    </div>
+  </div>
+
+  <script src="blocked.js"></script>
+</body>
+</html>
