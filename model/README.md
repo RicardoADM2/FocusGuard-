@@ -1,0 +1,1 @@
+`guard.js` is the browser inference runtime. Run `python train_guard.py` from the extension root to write the matching `meta.json`, `vocab.json`, and `weights.bin` into this folder. Do not mix generated files from different training runs.

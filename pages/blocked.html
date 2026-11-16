@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FocusGuard — Blocked</title>
+  <style>
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0f11;
+      --surface: #18181c;
+      --surface2: #1e1e24;
+      --border: #2a2a32;
+      --text: #e8e8f0;
+      --muted: #6b6b80;
+      --accent: #7c6df0;
+      --accent-rgb: 124, 109, 240;
+      --accent-hover: #8f80f5;
+      --danger: #f04f4f;
+      --success: #4fc47a;
+      --radius: 14px;
+    }
+
+    /* Hard blocks and removal use red instead of purple */
+    body[data-view="hard"],
+    body[data-view="remove"] {
+      --accent: #e5534b;
+      --accent-rgb: 229, 83, 75;
+      --accent-hover: #ef6a63;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+    }
+
+    body {
+      display: flex;
+      overflow-y: auto;
+      padding: 24px;
+    }
+
+    /* Ambient background orb */
+    body::before {
+      content: '';
+      position: fixed;
+      top: -20%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(var(--accent-rgb), 0.12) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .card {
+      position: relative;
+      z-index: 1;
+      margin: auto; /* centres without clipping when the card is taller than the window */
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 48px 56px;
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.03), 0 24px 64px rgba(0,0,0,0.5);
+    }
+
+    body[data-view="remove"] .card { max-width: 600px; }
+
+    .shield-icon {
+      width: 52px;
+      height: 52px;
+      margin: 0 auto 24px;
+      background: rgba(var(--accent-rgb), 0.2);
+      border: 1px solid rgba(var(--accent-rgb), 0.4);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+
+    .site-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: var(--accent);
+      background: rgba(var(--accent-rgb), 0.1);
+      border: 1px solid rgba(var(--accent-rgb), 0.25);
+      border-radius: 6px;
+      padding: 4px 10px;
+      display: inline-block;
+      margin-bottom: 16px;
+      letter-spacing: 0.02em;
+    }
+
+    h1 {
+      font-size: 22px;
+      font-weight: 600;
+      line-height: 1.3;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.5;
+      margin-bottom: 40px;
+    }
+
+    body[data-view="remove"] .subtitle { margin-bottom: 28px; }
+
+    /* Countdown ring */
+    .countdown-wrap {
+      position: relative;
+      width: 120px;
+      height: 120px;
+      margin: 0 auto 32px;
+    }
+
+    .countdown-svg {
+      width: 120px;
+      height: 120px;
+      transform: rotate(-90deg);
+    }
+
+    .countdown-track {
+      fill: none;
+      stroke: var(--border);
+      stroke-width: 4;
+    }
+
+    .countdown-ring {
+      fill: none;
+      stroke: var(--accent);
+      stroke-width: 4;
+      stroke-linecap: round;
+      stroke-dasharray: 320;
+      stroke-dashoffset: 0;
+      transition: stroke-dashoffset 1s linear, stroke 0.3s;
+      filter: drop-shadow(0 0 6px rgba(var(--accent-rgb), 0.6));
+    }
+
+    .countdown-ring.almost {
+      stroke: var(--danger);
+      filter: drop-shadow(0 0 6px rgba(240,79,79,0.6));
+    }
+
+    .countdown-ring.done {
+      stroke: var(--success);
+      filter: drop-shadow(0 0 6px rgba(79,196,122,0.6));
+    }
+
+    .countdown-number {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 32px;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    .countdown-number.done {
+      font-size: 26px;
+      color: var(--success);
+    }
+
+    .message {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 24px;
+      min-height: 20px;
+      transition: color 0.3s;
+    }
+
+    .message.active {
+      color: var(--text);
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s;
+      text-decoration: none;
+    }
+
+    .btn:focus-visible {
+      outline: 2px solid var(--text);
+      outline-offset: 2px;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+      box-shadow: 0 0 20px rgba(var(--accent-rgb), 0.3);
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+      box-shadow: 0 0 28px rgba(var(--accent-rgb), 0.45);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary:disabled {
+      background: #2a2a38;
+      color: var(--muted);
+      box-shadow: none;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    .btn-ghost:hover {
+      color: var(--text);
+      border-color: #3a3a46;
+    }
+
+    .btn-ghost:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .btn-danger {
+      background: transparent;
+      color: var(--danger);
+      border: 1px solid rgba(240,79,79,0.45);
+    }
+
+    .btn-danger:hover {
+      background: rgba(240,79,79,0.1);
+      border-color: var(--danger);
+    }
+
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .actions.row { flex-direction: row; justify-content: space-between; }
+    .actions.row .btn { flex: 1; }
+
+    .go-back {
+      margin-top: 4px;
+    }
+
+    /* Timed-block phase states */
+    .phase-waiting { display: block; }
+    .phase-counting { display: none; }
+    .phase-unlocked { display: none; }
+
+    body.counting .phase-waiting { display: none; }
+    body.counting .phase-counting { display: block; }
+    body.unlocked .phase-waiting { display: none; }
+    body.unlocked .phase-unlocked { display: block; }
+
+    .unlock-msg {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 14px;
+      color: var(--success);
+      margin-bottom: 20px;
+    }
+
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 28px 0;
+    }
+
+    .unlock-note {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    #cancelBtn {
+      font-size: 12px;
+      padding: 8px 16px;
+    }
+
+    /* ---- View switching ---- */
+    .hard-panel, .remove-panel { display: none; }
+    body[data-view="hard"] .hard-panel { display: block; }
+    body[data-view="remove"] .remove-panel { display: block; }
+    body[data-view="hard"] .soft-panel,
+    body[data-view="remove"] .soft-panel { display: none; }
+
+    /* ---- Hard block ---- */
+    .hard-rules {
+      list-style: none;
+      text-align: left;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .link-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-family: inherit;
+      font-size: 12px;
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      padding: 6px;
+    }
+    .link-btn:hover { color: var(--text); }
+
+    /* ---- Removal flow ---- */
+    .stage { display: none; }
+    body[data-stage="questions"] .stage-questions,
+    body[data-stage="timer"] .stage-timer,
+    body[data-stage="final"] .stage-final,
+    body[data-stage="done"] .stage-done { display: block; }
+
+    .q-progress {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 20px;
+    }
+
+    .q-progress span {
+      flex: 1;
+      height: 4px;
+      border-radius: 2px;
+      background: var(--border);
+      transition: background 0.2s;
+    }
+    .q-progress span.done { background: rgba(var(--accent-rgb), 0.55); }
+    .q-progress span.current { background: var(--accent); }
+
+    .q-count {
+      text-align: left;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .q-text {
+      text-align: left;
+      font-size: 17px;
+      font-weight: 500;
+      line-height: 1.45;
+      color: var(--text);
+      margin-bottom: 16px;
+    }
+
+    .q-input {
+      width: 100%;
+      min-height: 140px;
+      resize: vertical;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      line-height: 1.55;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .q-input:focus { border-color: rgba(var(--accent-rgb), 0.6); }
+
+    .q-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--muted);
+      margin: 8px 0 20px;
+    }
+    .q-meta .ok { color: var(--success); }
+    .q-meta .hint { color: var(--muted); }
+
+    .stage-timer .countdown-wrap { margin-bottom: 16px; }
+    .stage-timer .countdown-number { font-size: 28px; }
+
+    .readback {
+      text-align: left;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      max-height: 220px;
+      overflow-y: auto;
+      margin-bottom: 24px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    .readback h2 {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    .readback dt {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .readback dd {
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--text);
+      margin-bottom: 14px;
+      white-space: pre-wrap;
+    }
+    .readback dd:last-child { margin-bottom: 0; }
+
+    .stage-final .final-text {
+      font-size: 15px;
+      line-height: 1.55;
+      color: var(--text);
+      margin-bottom: 24px;
+    }
+
+    .stage-done .done-text {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.5;
+      margin-bottom: 24px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; }
+    }
+
+    @media (max-width: 520px) {
+      .card { padding: 32px 22px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="shield-icon" id="icon">🛡️</div>
+    <div class="site-label" id="siteLabel">loading...</div>
+    <h1 id="title">This site is blocked</h1>
+    <p class="subtitle" id="subtitle">FocusGuard is keeping you on track.<br>If you really need access, wait through the countdown.</p>
+
+    <!-- ===== Timed block + "turn off blocking" flow ===== -->
+    <div class="soft-panel">
+      <!-- Countdown ring (visible during all phases) -->
+      <div class="countdown-wrap">
+        <svg class="countdown-svg" viewBox="0 0 120 120">
+          <circle class="countdown-track" cx="60" cy="60" r="51"/>
+          <circle class="countdown-ring" id="ring" cx="60" cy="60" r="51"/>
+        </svg>
+        <div class="countdown-number" id="countNum">—</div>
+      </div>
+
+      <p class="message" id="msg">Ready when you are.</p>
+
+      <!-- Phase: waiting to start -->
+      <div class="phase-waiting actions">
+        <button class="btn btn-primary" id="startBtn">Start countdown</button>
+        <button class="btn btn-ghost go-back" id="backBtn">← Go back</button>
+      </div>
+
+      <!-- Phase: counting -->
+      <div class="phase-counting actions">
+        <button class="btn btn-ghost" id="cancelBtn">Cancel</button>
+      </div>
+
+      <!-- Phase: unlocked -->
+      <div class="phase-unlocked">
+        <div class="unlock-msg" id="unlockMsg">✓ Access granted</div>
+        <button class="btn btn-primary" id="proceedBtn" style="width:100%">Continue to site</button>
+        <div class="divider"></div>
+        <p class="unlock-note" id="unlockNote">You have a few minutes before this site is blocked again.</p>
+      </div>
+    </div>
+
+    <!-- ===== Hard block (no timer, no unlock) ===== -->
+    <div class="hard-panel">
+      <ul class="hard-rules">
+        <li>There is no countdown and no unlock for this site.</li>
+        <li>The on/off switch doesn't affect it.</li>
+        <li>Removing it takes five written answers and a 5-minute wait.</li>
+      </ul>
+      <div class="actions">
+        <button class="btn btn-primary" id="hardBackBtn">← Go back</button>
+        <button class="link-btn" id="hardRemoveBtn">Remove this block…</button>
+      </div>
+    </div>
+
+    <!-- ===== Removal flow: five questions, then a 5-minute wait ===== -->
+    <div class="remove-panel">
+
+      <div class="stage stage-questions">
+        <div class="q-progress" id="qProgress"></div>
+        <p class="q-count" id="qCount"></p>
+        <p class="q-text" id="qText"></p>
+        <textarea class="q-input" id="qInput" spellcheck="true" autocomplete="off" aria-labelledby="qText"></textarea>
+        <div class="q-meta">
+          <span id="wordCount">0 / 20 words</span>
+          <span class="hint" id="qHint">Pasting is disabled. Write it yourself.</span>
+        </div>
+        <div class="actions row">
+          <button class="btn btn-ghost" id="qPrev">Back</button>
+          <button class="btn btn-primary" id="qNext" disabled>Next</button>
+        </div>
+        <div class="divider"></div>
+        <button class="btn btn-ghost" id="qKeep" style="width:100%">Keep the block</button>
+      </div>
+
+      <div class="stage stage-timer">
+        <div class="countdown-wrap">
+          <svg class="countdown-svg" viewBox="0 0 120 120">
+            <circle class="countdown-track" cx="60" cy="60" r="51"/>
+            <circle class="countdown-ring" id="waitRing" cx="60" cy="60" r="51"/>
+          </svg>
+          <div class="countdown-number" id="waitNum">5:00</div>
+        </div>
+        <p class="message active" id="waitMsg">Read what you wrote.</p>
+        <div class="readback" id="readback"></div>
+        <button class="btn btn-primary" id="timerKeep" style="width:100%">Keep the block</button>
+      </div>
+
+      <div class="stage stage-final">
+        <p class="final-text">You've answered honestly and waited five minutes. Is removing this block still what you want?</p>
+        <div class="actions">
+          <button class="btn btn-primary" id="finalKeep">Keep the block</button>
+          <button class="btn btn-danger" id="finalRemove">Remove the block</button>
+        </div>
+      </div>
+
+      <div class="stage stage-done">
+        <p class="done-text" id="doneText"></p>
+        <button class="btn btn-primary" id="doneBtn" style="width:100%">Close</button>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="blocked.js"></script>
+</body>
+</html>

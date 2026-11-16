@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FocusGuard</title>
+  <style>
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0f11;
+      --surface: #18181c;
+      --surface2: #1e1e24;
+      --border: #2a2a32;
+      --text: #e8e8f0;
+      --muted: #6b6b80;
+      --accent: #7c6df0;
+      --accent-glow: rgba(124, 109, 240, 0.15);
+      --danger: #f04f4f;
+      --success: #4fc47a;
+      --radius: 10px;
+    }
+
+    body {
+      width: 340px;
+      min-height: 500px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      font-size: 15px;
+    }
+
+    .logo-icon {
+      font-size: 18px;
+    }
+
+    /* Toggle switch */
+    .toggle-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .toggle-label {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .toggle {
+      position: relative;
+      width: 36px;
+      height: 20px;
+    }
+
+    .toggle input { opacity: 0; width: 0; height: 0; }
+
+    .toggle-slider {
+      position: absolute;
+      inset: 0;
+      background: var(--border);
+      border-radius: 20px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .toggle-slider::before {
+      content: '';
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      left: 3px;
+      top: 3px;
+      background: var(--muted);
+      border-radius: 50%;
+      transition: 0.2s;
+    }
+
+    .toggle input:checked + .toggle-slider { background: var(--accent); }
+    .toggle input:checked + .toggle-slider::before {
+      transform: translateX(16px);
+      background: white;
+    }
+
+    /* Body */
+    .body { padding: 14px 18px; }
+
+    /* Section */
+    .section { margin-bottom: 20px; }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+
+    /* Site list */
+    .site-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-height: 180px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    .site-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      gap: 8px;
+    }
+
+    .site-item.unlocked-now {
+      border-color: rgba(79,196,122,0.3);
+      background: rgba(79,196,122,0.05);
+    }
+
+    .site-info {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .site-name {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .unlocked-badge {
+      font-size: 10px;
+      color: var(--success);
+      background: rgba(79,196,122,0.12);
+      border: 1px solid rgba(79,196,122,0.25);
+      border-radius: 4px;
+      padding: 1px 5px;
+      white-space: nowrap;
+    }
+
+    .remove-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--muted);
+      padding: 2px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      font-size: 14px;
+      line-height: 1;
+      transition: color 0.15s;
+      flex-shrink: 0;
+    }
+
+    .remove-btn:hover { color: var(--danger); }
+
+    /* Add site input */
+    .add-row {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .input {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 10px;
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .input::placeholder { color: var(--muted); }
+    .input:focus { border-color: rgba(124,109,240,0.5); }
+
+    /* Sliders */
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .slider-label {
+      flex: 1;
+      color: var(--text);
+      font-size: 13px;
+    }
+
+    .slider-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--accent);
+      width: 56px;
+      text-align: right;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s;
+    }
+
+    .btn-accent {
+      background: var(--accent);
+      color: white;
+    }
+    .btn-accent:hover { background: #8f80f5; }
+
+    .btn-sm {
+      padding: 6px 10px;
+      font-size: 11px;
+    }
+
+    /* Save bar */
+    .save-bar {
+      padding: 12px 18px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .save-btn {
+      flex: 1;
+      padding: 9px;
+      background: var(--accent);
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-family: 'Inter', sans-serif;
+      font-weight: 500;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .save-btn:hover { background: #8f80f5; }
+
+    .save-status {
+      font-size: 12px;
+      color: var(--success);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .save-status.show { opacity: 1; }
+
+    .empty-list {
+      text-align: center;
+      color: var(--muted);
+      padding: 20px 0;
+      font-size: 12px;
+    }
+
+    /* Hard blocks */
+    .hard-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--text);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .hard-option input { accent-color: var(--danger); cursor: pointer; }
+
+    .hard-hint {
+      display: none;
+      margin-top: 6px;
+      font-size: 11px;
+      line-height: 1.5;
+      color: var(--muted);
+    }
+
+    .hard-hint.show { display: block; }
+
+    .btn-danger-solid {
+      background: var(--danger);
+      color: white;
+    }
+    .btn-danger-solid:hover { background: #f46a6a; }
+
+    .input.invalid { border-color: var(--danger); }
+
+    .hard-item {
+      border-color: rgba(240,79,79,0.28);
+      background: rgba(240,79,79,0.05);
+    }
+
+    .hard-item .lock { font-size: 12px; }
+
+    .hard-remove {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--muted);
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
+      padding: 3px 8px;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: color 0.15s, border-color 0.15s;
+    }
+
+    .hard-remove:hover { color: var(--danger); border-color: rgba(240,79,79,0.5); }
+
+    .section-note {
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.5;
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">
+      <span class="logo-icon">🛡️</span>
+      <span>FocusGuard</span>
+    </div>
+    <div class="toggle-wrap">
+      <span class="toggle-label" id="toggleLabel">On</span>
+      <label class="toggle">
+        <input type="checkbox" id="enableToggle" checked>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+  </div>
+
+  <div class="body">
+
+    <!-- Blocked Sites -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Timed blocks</span>
+      </div>
+      <div class="site-list" id="siteList">
+        <div class="empty-list">No timed blocks yet</div>
+      </div>
+      <div class="add-row">
+        <input class="input" id="newSite" type="text" placeholder="reddit.com">
+        <button class="btn btn-accent btn-sm" id="addBtn">Add</button>
+      </div>
+      <label class="hard-option">
+        <input type="checkbox" id="hardCheck">
+        <span>No timer: hard block</span>
+      </label>
+      <p class="hard-hint" id="hardHint">
+        A hard block can't be unlocked and ignores the on/off switch.
+        Removing it takes five written answers and a 5-minute wait.
+      </p>
+    </div>
+
+    <!-- Hard-blocked Sites -->
+    <div class="section" id="hardSection" style="display:none">
+      <div class="section-header">
+        <span class="section-title">Hard blocks</span>
+      </div>
+      <p class="section-note">Always on. No countdown, no unlock.</p>
+      <div class="site-list" id="hardList"></div>
+    </div>
+
+    <!-- Timing Settings -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Timing</span>
+      </div>
+
+      <div class="slider-row">
+        <span class="slider-label">Countdown</span>
+        <span class="slider-val" id="countdownVal">30s</span>
+      </div>
+      <input type="range" id="countdownSlider" min="5" max="300" step="5" value="30">
+
+      <div class="slider-row" style="margin-top: 14px;">
+        <span class="slider-label">Unlock duration</span>
+        <span class="slider-val" id="unlockVal">10m</span>
+      </div>
+      <input type="range" id="unlockSlider" min="1" max="60" step="1" value="10">
+    </div>
+
+  </div>
+
+  <div class="save-bar">
+    <button class="save-btn" id="saveBtn">Save settings</button>
+    <span class="save-status" id="saveStatus">Saved ✓</span>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
